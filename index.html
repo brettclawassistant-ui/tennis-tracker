@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tennis Stats</title>
+<meta name="description" content="Tap-to-track doubles tennis stats from the stands. Works offline; data stays on your phone.">
+<meta name="theme-color" content="#166534">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tennis Stats">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{
+  --bg:#f4f6f4; --card:#fff; --ink:#1b1f1c; --mute:#66706a; --line:#dde3de;
+  --p0:#1d4ed8; --p0bg:#e3ebff; --p1:#c2410c; --p1bg:#ffeadd;
+  --good:#15803d; --goodbg:#e2f6e8; --warn:#b45309; --warnbg:#fff3d6; --bad:#b91c1c; --badbg:#fde4e4;
+  --sel:var(--p0); --selbg:var(--p0bg);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom));-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+input,select{font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;width:100%;background:#fff;color:var(--ink);-webkit-user-select:text;user-select:text}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 12px 6px;border-bottom:1px solid var(--line)}
+.title{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;margin-bottom:6px}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;padding:9px 0;border-radius:10px;background:#e7ece8;font-weight:600;font-size:15px}
+.tabs button.on{background:var(--ink);color:#fff}
+main{padding:10px 12px;max-width:560px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.who{display:flex;gap:8px;margin-bottom:10px}
+.who button{flex:1;padding:16px 6px;border-radius:14px;font-size:20px;font-weight:700;background:#e7ece8;color:var(--mute);border:3px solid transparent;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who button.on.p0{background:var(--p0bg);color:var(--p0);border-color:var(--p0)}
+.who button.on.p1{background:var(--p1bg);color:var(--p1);border-color:var(--p1)}
+.pad{border-left:5px solid var(--sel);padding-left:8px}
+.sec{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big{position:relative;min-height:62px;border-radius:14px;font-size:18px;font-weight:700;padding:8px 6px;line-height:1.15;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.big:active{transform:scale(.97);filter:brightness(.93)}
+.big small{display:block;font-size:12px;font-weight:500;opacity:.75}
+.big .n{position:absolute;top:5px;right:8px;font-size:12px;font-weight:700;opacity:.6}
+.g{background:var(--goodbg);color:var(--good)}
+.w{background:var(--warnbg);color:var(--warn)}
+.b{background:var(--badbg);color:var(--bad)}
+.e{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.win{background:#ecfccb;color:#3f6212}
+.tip{font-size:12px;color:var(--mute);margin:6px 2px 0}
+.chip{font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px;background:#e7ece8;color:var(--mute);text-transform:none;letter-spacing:0}
+.chip.on{background:var(--warn);color:#fff}
+.ptbar{display:none;margin-top:8px;padding:8px;border-radius:14px;background:var(--selbg);align-items:center;gap:8px}
+.ptbar.on{display:flex}
+.ptbar span{flex:1.2;font-size:14px;font-weight:600}
+.ptbar button{flex:1;padding:12px 4px;border-radius:12px;font-weight:700;font-size:16px}
+.undo{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center}
+.undo button{padding:14px 20px;border-radius:12px;background:var(--ink);color:#fff;font-weight:700;font-size:17px}
+.undo button:disabled{opacity:.35}
+.undo .last{flex:1;font-size:13px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 4px;text-align:right;border-bottom:1px solid #eef1ee}
+th:first-child,td:first-child{text-align:left;color:var(--mute);font-weight:500}
+th{font-size:13px}
+th.p0{color:var(--p0)}th.p1{color:var(--p1)}
+tr.grp td{color:var(--ink);font-weight:700;padding-top:12px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:0}
+td .sub{display:block;font-size:11px;color:var(--mute)}
+.hint{margin:6px 0 0;padding-left:18px;font-size:14px}
+.hint li{margin:4px 0}
+h3{margin:0 0 6px;font-size:16px}
+.row{display:flex;gap:8px;margin-top:8px}
+.row>*{flex:1}
+.btn{padding:13px 10px;border-radius:12px;background:#e7ece8;font-weight:700}
+.btn.pri{background:var(--good);color:#fff}
+.btn.dan{background:var(--badbg);color:var(--bad)}
+label{display:block;font-size:13px;color:var(--mute);margin:8px 0 4px}
+.m{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eef1ee}
+.m:last-child{border-bottom:0}
+.m .lab{flex:1;min-width:0}
+.m .lab b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .lab small{color:var(--mute)}
+.m button{padding:9px 10px;border-radius:10px;background:#e7ece8;font-size:13px;font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(20,24,21,.92);color:#fff;padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:10}
+.modal.on{display:flex}
+.modal .card{width:100%;margin:0;border-radius:18px 18px 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+textarea{width:100%;height:220px;font:13px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:10px;padding:8px;-webkit-user-select:text;user-select:text}
+.muted{color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <div class="title" id="title">Match</div>
+  <nav class="tabs">
+    <button data-tab="track" class="on">Track</button>
+    <button data-tab="stats">Stats</button>
+    <button data-tab="matches">Matches</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ TRACK ============ -->
+<section class="view on" id="v-track">
+  <div class="who">
+    <button class="p0 on" data-p="0" id="who0">Player</button>
+    <button class="p1" data-p="1" id="who1">Partner</button>
+  </div>
+  <div class="pad">
+    <div class="sec">Serve</div>
+    <div class="grid">
+      <button class="big g" data-ev="S1IN">1st In<span class="n" data-c="S1IN"></span></button>
+      <button class="big w" data-ev="S1F">1st Fault<span class="n" data-c="S1F"></span></button>
+      <button class="big g" data-ev="S2IN">2nd In<span class="n" data-c="S2IN"></span></button>
+      <button class="big b" data-ev="DF">Double Fault<span class="n" data-c="DF"></span></button>
+    </div>
+    <div class="ptbar" id="ptbar">
+      <span id="ptlabel">Point on 1st serve?</span>
+      <button class="g" data-pt="1">Won</button>
+      <button class="b" data-pt="0">Lost</button>
+    </div>
+    <div class="tip">"1st Fault" is optional: "2nd In" / "Double Fault" assume the 1st serve missed. Won/Lost is optional too.</div>
+
+    <div class="sec">Errors <button class="chip" id="forced">Forced? (next error)</button></div>
+    <div class="grid">
+      <button class="big e" data-ev="FHV">FH Volley<small>at net</small><span class="n" data-c="FHV"></span></button>
+      <button class="big e" data-ev="BHV">BH Volley<small>at net</small><span class="n" data-c="BHV"></span></button>
+      <button class="big e" data-ev="FHG">FH Ground<small>baseline</small><span class="n" data-c="FHG"></span></button>
+      <button class="big e" data-ev="BHG">BH Ground<small>baseline</small><span class="n" data-c="BHG"></span></button>
+      <button class="big e" data-ev="RET">Return<small>missed return</small><span class="n" data-c="RET"></span></button>
+      <button class="big e" data-ev="OH">Overhead<small>smash</small><span class="n" data-c="OH"></span></button>
+    </div>
+
+    <div class="sec">Winners</div>
+    <div class="grid">
+      <button class="big win" data-ev="WV">Net Winner<small>volley / overhead</small><span class="n" data-c="WV"></span></button>
+      <button class="big win" data-ev="WG">Ground Winner<small>baseline / return</small><span class="n" data-c="WG"></span></button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section class="view" id="v-stats">
+  <div class="card">
+    <label for="statsMatch" style="margin-top:0">Match</label>
+    <select id="statsMatch"></select>
+  </div>
+  <div class="card"><table id="statsTable"></table></div>
+  <div class="card" id="hints"></div>
+  <div class="row">
+    <button class="btn pri" id="shareBtn">Share summary</button>
+    <button class="btn" id="csvBtn">CSV file</button>
+  </div>
+  <p class="muted">UE = unforced errors (the default). Errors tagged "Forced" are listed separately and don't count toward the hints.</p>
+</section>
+
+<!-- ============ MATCHES ============ -->
+<section class="view" id="v-matches">
+  <div class="card">
+    <h3>Current match</h3>
+    <label for="mOpp">Opponent / event</label>
+    <input id="mOpp" placeholder="e.g. vs. Central HS" autocomplete="off">
+    <label for="mDate">Date</label>
+    <input id="mDate" type="date">
+    <div class="row">
+      <div><label for="mN0">Player 1 name</label><input id="mN0" autocomplete="off" maxlength="16"></div>
+      <div><label for="mN1">Player 2 name</label><input id="mN1" autocomplete="off" maxlength="16"></div>
+    </div>
+    <div class="row"><button class="btn pri" id="newBtn">+ New match</button></div>
+  </div>
+  <div class="card">
+    <h3>All matches</h3>
+    <div id="mList"></div>
+  </div>
+  <p class="muted">Everything is stored only on this phone (localStorage). Note: on iPhone, the Home Screen app and a Safari tab keep separate data, so use one consistently.</p>
+</section>
+</main>
+
+<div class="undo">
+  <button id="undoBtn" disabled>&#8630; Undo</button>
+  <div class="last" id="lastEv">No taps yet</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="newModal">
+  <div class="card">
+    <h3>New match</h3>
+    <label for="nOpp">Opponent / event</label>
+    <input id="nOpp" placeholder="e.g. vs. Central HS" autocomplete="off">
+    <label for="nDate">Date</label>
+    <input id="nDate" type="date">
+    <p class="muted">Player names carry over from the current match. The current match is saved to history.</p>
+    <div class="row"><button class="btn" data-close>Cancel</button><button class="btn pri" id="nStart">Start</button></div>
+  </div>
+</div>
+<div class="modal" id="copyModal">
+  <div class="card">
+    <h3>Copy summary</h3>
+    <textarea id="copyText" readonly></textarea>
+    <div class="row"><button class="btn pri" data-close>Done</button></div>
+  </div>
+</div>
+
+<script>
+/*CORE-START*/
+// ---- Pure logic (no DOM): tested with node ----
+var EV_LABEL = {
+  S1IN: '1st serve in', S1F: '1st serve fault', S2IN: '2nd serve in', DF: 'Double fault',
+  FHV: 'FH volley error', BHV: 'BH volley error', FHG: 'FH groundstroke error', BHG: 'BH groundstroke error',
+  RET: 'Return error', OH: 'Overhead error', WV: 'Net winner', WG: 'Groundstroke winner', PT: 'Point'
+};
+var ERR_KEYS = ['FHV', 'BHV', 'FHG', 'BHG', 'RET', 'OH'];
+var ERR_NAME = { FHV: 'forehand volley', BHV: 'backhand volley', FHG: 'forehand groundstroke', BHG: 'backhand groundstroke', RET: 'return', OH: 'overhead' };
+
+function pct(n, d) { return d > 0 ? Math.round(1000 * n / d) / 10 : null; }
+function fmtPct(v) { return v === null ? '–' : (Math.round(v) + '%'); }
+
+// p = 0 or 1 for a player, or null for the team total
+function computeStats(events, p) {
+  var s = { firstAtt: 0, firstIn: 0, secondAtt: 0, secondIn: 0, df: 0, pts1: 0, won1: 0, pts2: 0, won2: 0,
+            ue: {}, fe: {}, ueTotal: 0, feTotal: 0, wv: 0, wg: 0, taps: 0 };
+  ERR_KEYS.forEach(function (k) { s.ue[k] = 0; s.fe[k] = 0; });
+  var pending = [false, false]; // a 1st-serve fault waiting for its 2nd serve, per player
+  events.forEach(function (e) {
+    if (p !== null && e.p !== p) return;
+    s.taps++;
+    switch (e.t) {
+      case 'S1IN': s.firstAtt++; s.firstIn++; pending[e.p] = false; break;
+      case 'S1F': s.firstAtt++; pending[e.p] = true; break;
+      case 'S2IN': if (!pending[e.p]) s.firstAtt++; s.secondAtt++; s.secondIn++; pending[e.p] = false; break;
+      case 'DF': if (!pending[e.p]) s.firstAtt++; s.secondAtt++; s.df++; pending[e.p] = false; break;
+      case 'PT':
+        if (e.s === 1) { s.pts1++; if (e.won) s.won1++; } else { s.pts2++; if (e.won) s.won2++; }
+        break;
+      case 'WV': s.wv++; break;
+      case 'WG': s.wg++; break;
+      default:
+        if (ERR_KEYS.indexOf(e.t) >= 0) {
+          if (e.f) { s.fe[e.t]++; s.feTotal++; } else { s.ue[e.t]++; s.ueTotal++; }
+        }
+    }
+  });
+  s.firstPct = pct(s.firstIn, s.firstAtt);
+  s.secondPct = pct(s.secondIn, s.secondAtt);
+  s.won1Pct = pct(s.won1, s.pts1);
+  // 2nd-serve points include double faults (lost), but only once outcomes are being tracked
+  s.pts2All = s.pts2 > 0 ? s.pts2 + s.df : 0;
+  s.won2Pct = pct(s.won2, s.pts2All);
+  s.netUE = s.ue.FHV + s.ue.BHV + s.ue.OH;
+  s.baseUE = s.ue.FHG + s.ue.BHG;
+  s.fhUE = s.ue.FHV + s.ue.FHG;
+  s.bhUE = s.ue.BHV + s.ue.BHG;
+  s.winners = s.wv + s.wg;
+  return s;
+}
+
+function hintsFor(s) {
+  var h = [];
+  if (s.taps === 0) return ['No data yet.'];
+  // biggest unforced-error stroke
+  var top = null;
+  ERR_KEYS.forEach(function (k) { if (s.ue[k] > 0 && (!top || s.ue[k] > s.ue[top])) top = k; });
+  if (top && s.ue[top] >= 2) {
+    h.push('Most unforced errors: ' + ERR_NAME[top] + ' (' + s.ue[top] + ' of ' + s.ueTotal + '). Good thing to drill.');
+  }
+  if (s.netUE >= 3 && s.netUE >= 2 * s.baseUE) h.push('Errors are mostly at the net (' + s.netUE + ' vs ' + s.baseUE + ' baseline): volleys, ready position and split-step.');
+  else if (s.baseUE >= 3 && s.baseUE >= 2 * s.netUE) h.push('Errors are mostly from the baseline (' + s.baseUE + ' vs ' + s.netUE + ' at net): rally consistency and margin over the net.');
+  if (s.fhUE >= 3 && s.fhUE >= 2 * s.bhUE) h.push('Forehand side is leaking more (' + s.fhUE + ' FH vs ' + s.bhUE + ' BH).');
+  else if (s.bhUE >= 3 && s.bhUE >= 2 * s.fhUE) h.push('Backhand side is leaking more (' + s.bhUE + ' BH vs ' + s.fhUE + ' FH).');
+  if (s.firstAtt >= 8 && s.firstPct < 55) h.push('1st serves in: ' + fmtPct(s.firstPct) + '. Aim for about 60-65%: pick a target and keep the routine, rather than more pace.');
+  if (s.secondAtt >= 4 && s.secondPct < 80) h.push('2nd serves in: ' + fmtPct(s.secondPct) + '. A reliable spin 2nd serve is worth practice.');
+  if (s.df >= 3) h.push(s.df + ' double faults.');
+  if (s.ue.RET >= 3 && top !== 'RET') h.push(s.ue.RET + ' return errors: in doubles, just getting the return back crosscourt and low wins a lot.');
+  if (s.pts2All >= 4 && s.won2Pct < 40) h.push('Won only ' + fmtPct(s.won2Pct) + ' of 2nd-serve points.');
+  if (s.ueTotal >= 4 && s.winners > 0) {
+    var r = s.winners / s.ueTotal;
+    if (r >= 1) h.push('Winners ' + s.winners + ' vs UE ' + s.ueTotal + ': a positive ratio, nice.');
+  } else if (s.ueTotal >= 4 && s.winners === 0) {
+    h.push('No winners logged yet vs ' + s.ueTotal + ' unforced errors.');
+  }
+  if (!h.length) h.push('No clear weak spot yet. Keep tapping.');
+  return h.slice(0, 4);
+}
+
+function statRows(st0, st1, stT) {
+  // [label, v0, v1, vTeam] ; values are strings
+  function c(f) { return [f(st0), f(st1), f(stT)]; }
+  function frac(n, d) { return d > 0 ? n + '/' + d : '–'; }
+  var rows = [];
+  rows.push(['#Serve']);
+  rows.push(['1st serve %'].concat(c(function (s) { return fmtPct(s.firstPct) + '|' + frac(s.firstIn, s.firstAtt); })));
+  rows.push(['2nd serve in %'].concat(c(function (s) { return fmtPct(s.secondPct) + '|' + frac(s.secondIn, s.secondAtt); })));
+  rows.push(['Double faults'].concat(c(function (s) { return String(s.df); })));
+  rows.push(['Won on 1st serve'].concat(c(function (s) { return fmtPct(s.won1Pct) + '|' + frac(s.won1, s.pts1); })));
+  rows.push(['Won on 2nd (incl. DF)'].concat(c(function (s) { return fmtPct(s.won2Pct) + '|' + frac(s.won2, s.pts2All); })));
+  rows.push(['#Unforced errors']);
+  rows.push(['Total UE'].concat(c(function (s) { return String(s.ueTotal); })));
+  rows.push(['FH volley'].concat(c(function (s) { return String(s.ue.FHV); })));
+  rows.push(['BH volley'].concat(c(function (s) { return String(s.ue.BHV); })));
+  rows.push(['FH groundstroke'].concat(c(function (s) { return String(s.ue.FHG); })));
+  rows.push(['BH groundstroke'].concat(c(function (s) { return String(s.ue.BHG); })));
+  rows.push(['Return'].concat(c(function (s) { return String(s.ue.RET); })));
+  rows.push(['Overhead'].concat(c(function (s) { return String(s.ue.OH); })));
+  rows.push(['Net vs baseline'].concat(c(function (s) { return s.netUE + ' / ' + s.baseUE; })));
+  rows.push(['FH vs BH'].concat(c(function (s) { return s.fhUE + ' / ' + s.bhUE; })));
+  rows.push(['Forced errors'].concat(c(function (s) { return String(s.feTotal); })));
+  rows.push(['#Winners']);
+  rows.push(['Net winners'].concat(c(function (s) { return String(s.wv); })));
+  rows.push(['Ground winners'].concat(c(function (s) { return String(s.wg); })));
+  rows.push(['Winners : UE'].concat(c(function (s) { return s.winners + ' : ' + s.ueTotal; })));
+  return rows;
+}
+
+function matchLabel(m) {
+  var parts = [];
+  if (m.opp) parts.push(m.opp);
+  if (m.date) parts.push(m.date);
+  return parts.length ? parts.join(' · ') : 'Untitled match';
+}
+
+function summaryText(m) {
+  var n = m.names, st0 = computeStats(m.events, 0), st1 = computeStats(m.events, 1), stT = computeStats(m.events, null);
+  var rows = statRows(st0, st1, stT);
+  var out = ['Doubles stats: ' + matchLabel(m)];
+  rows.forEach(function (r) {
+    if (r.length === 1) { out.push(''); out.push(r[0].slice(1).toUpperCase()); return; }
+    function v(x) { var a = x.split('|'); return a[1] && a[1] !== '–' ? a[0] + ' (' + a[1] + ')' : a[0]; }
+    out.push(r[0] + ': ' + n[0] + ' ' + v(r[1]) + ', ' + n[1] + ' ' + v(r[2]));
+  });
+  out.push('');
+  out.push('WHAT TO WORK ON');
+  [0, 1].forEach(function (i) {
+    out.push(n[i] + ':');
+    hintsFor(i === 0 ? st0 : st1).forEach(function (h) { out.push('- ' + h); });
+  });
+  return out.join('\n');
+}
+
+function csvEscape(v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function summaryCSV(m) {
+  var n = m.names, st0 = computeStats(m.events, 0), st1 = computeStats(m.events, 1), stT = computeStats(m.events, null);
+  var lines = [['Match', matchLabel(m)], [], ['Stat', n[0], n[1], 'Team']];
+  statRows(st0, st1, stT).forEach(function (r) {
+    if (r.length === 1) { lines.push([r[0].slice(1)]); return; }
+    lines.push([r[0]].concat(r.slice(1).map(function (x) { var a = x.split('|'); return a[1] && a[1] !== '–' ? a[0] + ' (' + a[1] + ')' : a[0]; })));
+  });
+  lines.push([]);
+  lines.push(['Event log']);
+  lines.push(['#', 'Time', 'Player', 'Event', 'Detail']);
+  m.events.forEach(function (e, i) {
+    var t = new Date(e.ts);
+    var hh = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ':' + ('0' + t.getSeconds()).slice(-2);
+    var detail = e.t === 'PT' ? (e.won ? 'won' : 'lost') + ' on ' + (e.s === 1 ? '1st' : '2nd') + ' serve' : (e.f ? 'forced' : '');
+    lines.push([i + 1, hh, n[e.p], EV_LABEL[e.t] || e.t, detail]);
+  });
+  return '\uFEFF' + lines.map(function (l) { return l.map(csvEscape).join(','); }).join('\r\n') + '\r\n';
+}
+
+function describe(e, names) {
+  var d = EV_LABEL[e.t] || e.t;
+  if (e.t === 'PT') d = (e.won ? 'Won' : 'Lost') + ' point on ' + (e.s === 1 ? '1st' : '2nd') + ' serve';
+  if (e.f) d = 'Forced ' + d.charAt(0).toLowerCase() + d.slice(1);
+  return names[e.p] + ': ' + d;
+}
+
+function newMatch(opp, date, names) {
+  return { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), opp: opp || '', date: date || '',
+           names: (names || ['Player', 'Partner']).slice(), events: [], created: Date.now() };
+}
+if (typeof module !== 'undefined') module.exports = { computeStats: computeStats, hintsFor: hintsFor, statRows: statRows, summaryText: summaryText, summaryCSV: summaryCSV, describe: describe, newMatch: newMatch, pct: pct };
+/*CORE-END*/
+</script>
+
+<script>
+(function () {
+  var KEY = 'tennisDoublesStats.v1';
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var state;
+  function load() {
+    try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+    if (!state || !state.matches || !state.matches.length) {
+      var m = newMatch('', today());
+      state = { cur: m.id, sel: 0, matches: [m] };
+    }
+    if (!getMatch(state.cur)) state.cur = state.matches[state.matches.length - 1].id;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { toast('Could not save! Storage full?'); }
+  }
+  function getMatch(id) { for (var i = 0; i < state.matches.length; i++) if (state.matches[i].id === id) return state.matches[i]; return null; }
+  function cur() { return getMatch(state.cur); }
+
+  var forcedNext = false, ptServe = 0, viewId = null;
+
+  // ---------- tracking ----------
+  function addEvent(ev) {
+    var m = cur();
+    ev.p = state.sel; ev.ts = Date.now();
+    m.events.push(ev);
+    save();
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    toast(describe(ev, m.names));
+    renderTrack();
+  }
+  $$('[data-ev]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-ev'), ev = { t: t };
+      if (['FHV', 'BHV', 'FHG', 'BHG', 'RET', 'OH'].indexOf(t) >= 0 && forcedNext) ev.f = 1;
+      forcedNext = false;
+      ptServe = (t === 'S1IN') ? 1 : (t === 'S2IN') ? 2 : 0;
+      addEvent(ev);
+    });
+  });
+  $$('[data-pt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!ptServe) return;
+      var s = ptServe; ptServe = 0;
+      addEvent({ t: 'PT', s: s, won: b.getAttribute('data-pt') === '1' });
+    });
+  });
+  $('#forced').addEventListener('click', function () { forcedNext = !forcedNext; renderTrack(); });
+  $$('.who button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.sel = +b.getAttribute('data-p'); ptServe = 0; save(); renderTrack();
+    });
+  });
+  $('#undoBtn').addEventListener('click', function () {
+    var m = cur(); if (!m.events.length) return;
+    var e = m.events.pop(); save();
+    ptServe = 0; forcedNext = false;
+    toast('Undid ' + describe(e, m.names));
+    renderTrack();
+  });
+
+  function renderTrack() {
+    var m = cur(), sel = state.sel;
+    $('#title').textContent = matchLabel(m) + '  ·  ' + m.events.length + ' taps';
+    $('#who0').textContent = m.names[0]; $('#who1').textContent = m.names[1];
+    $('#who0').classList.toggle('on', sel === 0); $('#who1').classList.toggle('on', sel === 1);
+    document.documentElement.style.setProperty('--sel', sel ? '#c2410c' : '#1d4ed8');
+    document.documentElement.style.setProperty('--selbg', sel ? '#ffeadd' : '#e3ebff');
+    var counts = {};
+    m.events.forEach(function (e) { if (e.p === sel) counts[e.t] = (counts[e.t] || 0) + 1; });
+    $$('[data-c]').forEach(function (n) { var c = counts[n.getAttribute('data-c')]; n.textContent = c ? c : ''; });
+    $('#forced').classList.toggle('on', forcedNext);
+    $('#forced').textContent = forcedNext ? 'Next error: FORCED' : 'Forced? (next error)';
+    $('#ptbar').classList.toggle('on', !!ptServe);
+    $('#ptlabel').textContent = m.names[sel] + ' point on ' + (ptServe === 2 ? '2nd' : '1st') + ' serve?';
+    var last = m.events[m.events.length - 1];
+    $('#undoBtn').disabled = !last;
+    $('#lastEv').textContent = last ? 'Last: ' + describe(last, m.names) : 'No taps yet';
+  }
+
+  // ---------- stats ----------
+  function renderStats() {
+    var sel = $('#statsMatch');
+    sel.innerHTML = '';
+    state.matches.slice().reverse().forEach(function (m) {
+      var o = document.createElement('option');
+      o.value = m.id; o.textContent = (m.id === state.cur ? '● ' : '') + matchLabel(m) + ' (' + m.events.length + ' taps)';
+      sel.appendChild(o);
+    });
+    if (!viewId || !getMatch(viewId)) viewId = state.cur;
+    sel.value = viewId;
+    var m = getMatch(viewId), n = m.names;
+    var st0 = computeStats(m.events, 0), st1 = computeStats(m.events, 1), stT = computeStats(m.events, null);
+    var html = '<tr><th></th><th class="p0">' + esc(n[0]) + '</th><th class="p1">' + esc(n[1]) + '</th><th>Team</th></tr>';
+    statRows(st0, st1, stT).forEach(function (r) {
+      if (r.length === 1) { html += '<tr class="grp"><td colspan="4">' + esc(r[0].slice(1)) + '</td></tr>'; return; }
+      html += '<tr><td>' + esc(r[0]) + '</td>' + r.slice(1).map(function (v) {
+        var a = v.split('|');
+        return '<td>' + esc(a[0]) + (a[1] && a[1] !== '–' ? '<span class="sub">' + esc(a[1]) + '</span>' : '') + '</td>';
+      }).join('') + '</tr>';
+    });
+    $('#statsTable').innerHTML = html;
+    var hh = '';
+    [0, 1].forEach(function (i) {
+      hh += '<h3 style="color:var(--p' + i + ')">' + esc(n[i]) + ': what to work on</h3><ul class="hint">' +
+        hintsFor(i ? st1 : st0).map(function (h) { return '<li>' + esc(h) + '</li>'; }).join('') + '</ul>' + (i ? '' : '<div style="height:10px"></div>');
+    });
+    $('#hints').innerHTML = hh;
+  }
+  $('#statsMatch').addEventListener('change', function (e) { viewId = e.target.value; renderStats(); });
+
+  function fileName(m, ext) {
+    var base = ('tennis-' + (m.date || '') + '-' + (m.opp || 'match')).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return base + '.' + ext;
+  }
+  $('#shareBtn').addEventListener('click', function () {
+    var m = getMatch(viewId || state.cur), text = summaryText(m);
+    if (navigator.share) {
+      navigator.share({ title: 'Tennis stats: ' + matchLabel(m), text: text }).catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        copyFallback(text);
+      });
+    } else copyFallback(text);
+  });
+  function copyFallback(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast('Summary copied to clipboard'); }, function () { showCopy(text); });
+    } else showCopy(text);
+  }
+  function showCopy(text) { $('#copyText').value = text; openModal('#copyModal'); setTimeout(function () { $('#copyText').select(); }, 50); }
+  $('#csvBtn').addEventListener('click', function () {
+    var m = getMatch(viewId || state.cur), csv = summaryCSV(m), name = fileName(m, 'csv');
+    var blob = new Blob([csv], { type: 'text/csv' });
+    try {
+      var f = new File([blob], name, { type: 'text/csv' });
+      if (navigator.canShare && navigator.canShare({ files: [f] }) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+        navigator.share({ files: [f], title: name }).catch(function (err) { if (!err || err.name !== 'AbortError') download(blob, name); });
+        return;
+      }
+    } catch (e) {}
+    download(blob, name);
+  });
+  function download(blob, name) {
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  // ---------- matches ----------
+  function renderMatches() {
+    var m = cur();
+    $('#mOpp').value = m.opp; $('#mDate').value = m.date; $('#mN0').value = m.names[0]; $('#mN1').value = m.names[1];
+    renderList();
+  }
+  function renderList() {
+    var html = '';
+    state.matches.slice().reverse().forEach(function (x) {
+      var isCur = x.id === state.cur;
+      html += '<div class="m"><div class="lab"><b>' + (isCur ? '● ' : '') + esc(matchLabel(x)) + '</b><small>' + x.events.length + ' taps' + (isCur ? ' · tracking now' : '') + '</small></div>' +
+        '<button data-view="' + x.id + '">Stats</button>' +
+        (isCur ? '' : '<button data-resume="' + x.id + '">Resume</button><button data-del="' + x.id + '" style="color:var(--bad)">✕</button>') + '</div>';
+    });
+    $('#mList').innerHTML = html;
+  }
+  function bindField(sel, fn) {
+    $(sel).addEventListener('input', function (e) { fn(cur(), e.target.value); save(); renderTrack(); renderList(); });
+  }
+  bindField('#mOpp', function (m, v) { m.opp = v.trim() ? v : ''; });
+  bindField('#mDate', function (m, v) { m.date = v; });
+  bindField('#mN0', function (m, v) { m.names[0] = v.trim() || 'Player'; });
+  bindField('#mN1', function (m, v) { m.names[1] = v.trim() || 'Partner'; });
+  $('#mList').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var id;
+    if ((id = b.getAttribute('data-view'))) { viewId = id; showTab('stats'); }
+    else if ((id = b.getAttribute('data-resume'))) { state.cur = id; save(); toast('Now tracking: ' + matchLabel(cur())); renderMatches(); renderTrack(); }
+    else if ((id = b.getAttribute('data-del'))) {
+      var m = getMatch(id);
+      if (confirm('Delete "' + matchLabel(m) + '" (' + m.events.length + ' taps)? This cannot be undone.')) {
+        state.matches = state.matches.filter(function (x) { return x.id !== id; }); save(); renderList();
+      }
+    }
+  });
+  $('#newBtn').addEventListener('click', function () { $('#nOpp').value = ''; $('#nDate').value = today(); openModal('#newModal'); });
+  $('#nStart').addEventListener('click', function () {
+    var old = cur();
+    var m = newMatch($('#nOpp').value.trim(), $('#nDate').value, old.names);
+    if (!old.events.length && !old.opp) state.matches = state.matches.filter(function (x) { return x.id !== old.id; }); // drop empty
+    state.matches.push(m); state.cur = m.id; viewId = m.id; ptServe = 0; forcedNext = false; save();
+    closeModals(); showTab('track'); toast('New match started');
+  });
+
+  // ---------- chrome ----------
+  function openModal(s) { $(s).classList.add('on'); }
+  function closeModals() { $$('.modal').forEach(function (x) { x.classList.remove('on'); }); }
+  $$('[data-close]').forEach(function (b) { b.addEventListener('click', closeModals); });
+  $$('.modal').forEach(function (md) { md.addEventListener('click', function (e) { if (e.target === md) closeModals(); }); });
+  var tt;
+  function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 1400); }
+  function showTab(name) {
+    $$('.tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === name); });
+    $$('.view').forEach(function (v) { v.classList.toggle('on', v.id === 'v-' + name); });
+    if (name === 'stats') renderStats();
+    if (name === 'matches') renderMatches();
+    if (name === 'track') renderTrack();
+    document.querySelector('.undo').style.display = name === 'track' ? '' : 'none';
+    window.scrollTo(0, 0);
+  }
+  $$('.tabs button').forEach(function (b) { b.addEventListener('click', function () { if (b.getAttribute('data-tab') === 'stats') viewId = state.cur; showTab(b.getAttribute('data-tab')); }); });
+  window.addEventListener('storage', function () { load(); renderTrack(); });
+
+  load(); save(); renderTrack();
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
